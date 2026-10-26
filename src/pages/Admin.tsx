@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { supabase } from '../lib/supabase';
-import { Package, Truck, ArrowLeft, Loader2, CheckCircle2, Copy, Link as LinkIcon, Trash2 } from 'lucide-react';
+import { Package, Truck, ArrowLeft, Loader2, CheckCircle2, Copy, Link as LinkIcon, Trash2, Pencil, Save, X } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 
 export function Admin() {
@@ -26,6 +26,90 @@ export function Admin() {
   const [copied, setCopied] = useState(false);
   const [packages, setPackages] = useState<any[]>([]);
   const [loadingPackages, setLoadingPackages] = useState(true);
+  const [deletingPackageId, setDeletingPackageId] = useState<string | null>(null);
+  const [editingPackage, setEditingPackage] = useState<any | null>(null);
+  const [packageUpdates, setPackageUpdates] = useState<any[]>([]);
+  const [selectedUpdate, setSelectedUpdate] = useState<any | null>(null);
+  const [updateForm, setUpdateForm] = useState({ status: '', location: '', scheduled_for: '' });
+  const [loadingUpdates, setLoadingUpdates] = useState(false);
+  const [savingUpdate, setSavingUpdate] = useState(false);
+  const [updateMessage, setUpdateMessage] = useState('');
+  const [updateError, setUpdateError] = useState('');
+
+  const toLocalDateTime = (value: string) => {
+    const date = new Date(value);
+    const localDate = new Date(date.getTime() - date.getTimezoneOffset() * 60000);
+    return localDate.toISOString().slice(0, 16);
+  };
+
+  const openTrackingEditor = async (pkg: any) => {
+    if (!supabase) return;
+    setEditingPackage(pkg);
+    setSelectedUpdate(null);
+    setPackageUpdates([]);
+    setUpdateMessage('');
+    setUpdateError('');
+    setLoadingUpdates(true);
+    try {
+      const { data, error } = await supabase
+        .from('package_updates')
+        .select('*')
+        .eq('package_id', pkg.id)
+        .order('scheduled_for', { ascending: true });
+      if (error) throw error;
+      setPackageUpdates(data || []);
+    } catch (err: any) {
+      setUpdateError(err.message || 'Não foi possível carregar as movimentações.');
+    } finally {
+      setLoadingUpdates(false);
+    }
+  };
+
+  const selectUpdateForEdit = (update: any) => {
+    setSelectedUpdate(update);
+    setUpdateForm({
+      status: update.status || '',
+      location: update.location || '',
+      scheduled_for: toLocalDateTime(update.scheduled_for),
+    });
+    setUpdateMessage('');
+    setUpdateError('');
+  };
+
+  const handleSaveUpdate = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!supabase || !selectedUpdate || !editingPackage) return;
+    setSavingUpdate(true);
+    setUpdateMessage('');
+    setUpdateError('');
+    try {
+      const { data, error } = await supabase
+        .from('package_updates')
+        .update({
+          status: updateForm.status.trim(),
+          location: updateForm.location.trim(),
+          scheduled_for: new Date(updateForm.scheduled_for).toISOString(),
+        })
+        .eq('id', selectedUpdate.id)
+        .select()
+        .single();
+      if (error) throw error;
+
+      setPackageUpdates(current => current.map(item => item.id === data.id ? data : item)
+        .sort((a, b) => new Date(a.scheduled_for).getTime() - new Date(b.scheduled_for).getTime()));
+      setSelectedUpdate(data);
+      setUpdateForm({
+        status: data.status,
+        location: data.location,
+        scheduled_for: toLocalDateTime(data.scheduled_for),
+      });
+      setUpdateMessage('Movimentação atualizada com sucesso. A alteração já está salva no rastreamento.');
+    } catch (err: any) {
+      setUpdateError(err.message || 'Não foi possível salvar a movimentação. Confira as permissões de atualização no Supabase.');
+    } finally {
+      setSavingUpdate(false);
+    }
+  };
 
   useEffect(() => {
     fetchPackages();
@@ -50,15 +134,57 @@ export function Admin() {
   };
 
   const handleDelete = async (id: string) => {
-    if (!window.confirm('Tem certeza que deseja excluir esta encomenda?')) return;
-    if (!supabase) return;
+    if (!window.confirm('Tem certeza que deseja excluir esta encomenda e todo o histórico de rastreamento associado?')) return;
+    if (!supabase || deletingPackageId) return;
+
+    setDeletingPackageId(id);
     try {
-      const { error } = await supabase.from('packages').delete().eq('id', id);
-      if (error) throw error;
-      fetchPackages();
+      // .select() is important here: with Supabase RLS a DELETE can affect zero
+      // rows without returning a Postgres error. Verify that a row was actually removed.
+      let { data, error: deleteError } = await supabase
+        .from('packages')
+        .delete()
+        .eq('id', id)
+        .select('id')
+        .maybeSingle();
+
+      // Older databases may not have ON DELETE CASCADE. If the first delete fails
+      // specifically because of a foreign-key constraint, remove the child history
+      // and retry. If RLS blocks the parent delete, do not touch the history.
+      if (deleteError && /foreign key|violates.*constraint|still referenced/i.test(deleteError.message)) {
+        const { error: updatesDeleteError } = await supabase
+          .from('package_updates')
+          .delete()
+          .eq('package_id', id);
+        if (updatesDeleteError) throw updatesDeleteError;
+
+        const retry = await supabase
+          .from('packages')
+          .delete()
+          .eq('id', id)
+          .select('id')
+          .maybeSingle();
+        data = retry.data;
+        deleteError = retry.error;
+      }
+
+      if (deleteError) throw deleteError;
+      if (!data) {
+        throw new Error('O Supabase não confirmou a exclusão. Verifique as políticas de acesso (RLS) da tabela packages.');
+      }
+
+      setPackages(current => current.filter(pkg => pkg.id !== id));
+      if (editingPackage?.id === id) {
+        setEditingPackage(null);
+        setSelectedUpdate(null);
+        setPackageUpdates([]);
+      }
+      alert('Encomenda excluída com sucesso.');
     } catch (err: any) {
-      console.error('Erro ao excluir:', err);
-      alert('Erro ao excluir encomenda.');
+      console.error('Erro ao excluir encomenda:', err);
+      alert(`Não foi possível excluir a encomenda. ${err?.message || 'Verifique as permissões do Supabase.'}`);
+    } finally {
+      setDeletingPackageId(null);
     }
   };
 
@@ -193,6 +319,7 @@ export function Admin() {
       if (updatesError) throw updatesError;
 
       setSuccessCode(code);
+      fetchPackages();
       setFormData({
         posted_at: new Date().toISOString().slice(0, 16),
         weight: '',
@@ -523,11 +650,21 @@ export function Admin() {
                           <LinkIcon className="w-4 h-4" />
                         </button>
                         <button
-                          onClick={() => handleDelete(pkg.id)}
-                          className="p-2 bg-red-50 text-red-600 rounded hover:bg-red-100 transition-colors"
-                          title="Excluir"
+                          onClick={() => openTrackingEditor(pkg)}
+                          className="p-2 bg-amber-50 text-amber-700 rounded hover:bg-amber-100 transition-colors"
+                          title="Editar movimentações do rastreamento"
                         >
-                          <Trash2 className="w-4 h-4" />
+                          <Pencil className="w-4 h-4" />
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => handleDelete(pkg.id)}
+                          disabled={deletingPackageId === pkg.id || deletingPackageId !== null}
+                          className="p-2 bg-red-50 text-red-600 rounded hover:bg-red-100 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                          title={deletingPackageId === pkg.id ? 'Excluindo...' : 'Excluir'}
+                          aria-label={`Excluir encomenda ${pkg.tracking_code}`}
+                        >
+                          {deletingPackageId === pkg.id ? <Loader2 className="w-4 h-4 animate-spin" /> : <Trash2 className="w-4 h-4" />}
                         </button>
                       </td>
                     </tr>
@@ -537,6 +674,72 @@ export function Admin() {
             </div>
           )}
         </div>
+
+        {editingPackage && (
+          <div className="bg-white p-6 md:p-8 rounded-2xl shadow-sm border border-slate-200 mt-8 mb-12">
+            <div className="flex items-start justify-between gap-4 border-b border-slate-100 pb-5 mb-6">
+              <div>
+                <h2 className="text-xl md:text-2xl font-black text-[#004a99] uppercase tracking-tight">Editar rastreamento</h2>
+                <p className="text-sm text-slate-500 mt-2">Código: <strong className="text-slate-800">{editingPackage.tracking_code}</strong>. Edite uma movimentação existente; não é necessário cadastrar o código novamente.</p>
+              </div>
+              <button type="button" onClick={() => { setEditingPackage(null); setSelectedUpdate(null); setUpdateMessage(''); setUpdateError(''); }} className="p-2 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-600" title="Fechar editor">
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            {updateError && <div className="mb-5 p-3 rounded-lg border border-red-200 bg-red-50 text-red-700 text-sm font-semibold">{updateError}</div>}
+            {updateMessage && <div className="mb-5 p-3 rounded-lg border border-green-200 bg-green-50 text-green-700 text-sm font-semibold">{updateMessage}</div>}
+
+            {loadingUpdates ? (
+              <div className="flex justify-center p-8"><Loader2 className="w-7 h-7 text-[#004a99] animate-spin" /></div>
+            ) : packageUpdates.length === 0 ? (
+              <p className="text-sm text-slate-500 p-4 bg-slate-50 rounded-lg">Nenhuma movimentação encontrada para este código.</p>
+            ) : (
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                <div className="space-y-3">
+                  <h3 className="text-xs font-black uppercase tracking-wider text-slate-500 mb-3">Movimentações cadastradas</h3>
+                  {packageUpdates.map((update, index) => (
+                    <button type="button" key={update.id} onClick={() => selectUpdateForEdit(update)} className={`w-full text-left p-4 rounded-xl border transition-colors ${selectedUpdate?.id === update.id ? 'border-[#004a99] bg-blue-50' : 'border-slate-200 hover:border-blue-300 hover:bg-slate-50'}`}>
+                      <div className="flex items-start justify-between gap-3">
+                        <span className="text-[10px] font-black text-slate-400">ETAPA {index + 1}</span>
+                        <span className="text-[10px] font-bold text-slate-500">{new Date(update.scheduled_for).toLocaleString('pt-BR')}</span>
+                      </div>
+                      <p className="font-bold text-sm text-slate-900 mt-2">{update.status}</p>
+                      <p className="text-xs text-slate-500 mt-1">{update.location}</p>
+                    </button>
+                  ))}
+                </div>
+
+                <div>
+                  {selectedUpdate ? (
+                    <form onSubmit={handleSaveUpdate} className="space-y-4 bg-slate-50 border border-slate-200 rounded-xl p-5">
+                      <h3 className="text-xs font-black uppercase tracking-wider text-slate-700">Editar etapa selecionada</h3>
+                      <div>
+                        <label className="block text-xs font-bold text-slate-600 mb-1">Status / ocorrência</label>
+                        <input required value={updateForm.status} onChange={e => setUpdateForm(prev => ({ ...prev, status: e.target.value }))} placeholder="Ex.: Rota alterada" className="w-full p-3 bg-white border border-slate-200 rounded-lg text-sm focus:outline-none focus:border-[#004a99]" />
+                      </div>
+                      <div>
+                        <label className="block text-xs font-bold text-slate-600 mb-1">Localização</label>
+                        <input required value={updateForm.location} onChange={e => setUpdateForm(prev => ({ ...prev, location: e.target.value }))} placeholder="Ex.: Unidade de distribuição - SP" className="w-full p-3 bg-white border border-slate-200 rounded-lg text-sm focus:outline-none focus:border-[#004a99]" />
+                      </div>
+                      <div>
+                        <label className="block text-xs font-bold text-slate-600 mb-1">Data e hora previstas / da ocorrência</label>
+                        <input required type="datetime-local" value={updateForm.scheduled_for} onChange={e => setUpdateForm(prev => ({ ...prev, scheduled_for: e.target.value }))} className="w-full p-3 bg-white border border-slate-200 rounded-lg text-sm focus:outline-none focus:border-[#004a99]" />
+                      </div>
+                      <p className="text-xs text-slate-500">A data determina quando a etapa aparece como realizada ou prevista no rastreamento do cliente. Alterar a data de uma etapa não apaga as demais movimentações.</p>
+                      <button type="submit" disabled={savingUpdate} className="w-full flex items-center justify-center gap-2 bg-[#004a99] hover:bg-[#003a7a] disabled:opacity-60 text-white px-5 py-3 rounded-lg font-bold text-sm uppercase tracking-wide">
+                        {savingUpdate ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
+                        {savingUpdate ? 'Salvando...' : 'Salvar alteração'}
+                      </button>
+                    </form>
+                  ) : (
+                    <div className="h-full min-h-40 flex items-center justify-center text-center p-6 bg-slate-50 border border-dashed border-slate-300 rounded-xl text-sm text-slate-500">Selecione uma movimentação à esquerda para editar o status, o local e a data.</div>
+                  )}
+                </div>
+              </div>
+            )}
+          </div>
+        )}
       </main>
     </div>
   );
