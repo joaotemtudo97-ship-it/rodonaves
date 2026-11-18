@@ -93,17 +93,17 @@ export function Tracking() {
   return (
     <div className="min-h-screen bg-slate-50 font-sans text-slate-900 flex flex-col">
       {/* Header */}
-      <header className="bg-white border-b border-slate-200 sticky top-0 z-50">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-20 flex items-center justify-between">
+      <header className="bg-white/95 backdrop-blur-md border-b border-slate-200/80 sticky top-0 z-50 shadow-sm">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-[76px] flex items-center justify-between">
           <div className="flex flex-col cursor-pointer" onClick={() => window.location.href='/'}>
-            <h1 className="text-3xl font-black tracking-tighter italic leading-none text-[#004a99]">
+            <h1 className="text-[27px] sm:text-3xl font-black tracking-tighter italic leading-none text-[#004a99]">
               RODONAVES<span className="text-[#ffcc00]">.</span>
             </h1>
             <p className="text-[10px] uppercase tracking-[0.2em] text-slate-500 mt-1">Logística & Transportes</p>
           </div>
           
           {/* Desktop Nav */}
-          <nav className="hidden md:flex gap-8 font-bold text-xs uppercase tracking-widest text-[#004a99]">
+          <nav className="hidden md:flex items-center gap-7 font-bold text-[11px] uppercase tracking-[0.13em] text-[#004a99]">
             <a href="/para-voce" className="hover:text-[#ffcc00] transition-colors">Para Você</a>
             <a href="/para-empresa" className="hover:text-[#ffcc00] transition-colors">Para sua Empresa</a>
             <a href="/servicos" className="hover:text-[#ffcc00] transition-colors">Serviços</a>
@@ -114,28 +114,38 @@ export function Tracking() {
 
       <main className="flex-1">
         {/* Hero Section */}
-        <section className="relative bg-[#004a99] pt-20 pb-32">
-          {/* Background Pattern/Image Overlay */}
-          <div className="absolute inset-0 overflow-hidden">
-             <img src="https://images.unsplash.com/photo-1586528116311-ad8dd3c8310d?q=80&w=2000&auto=format&fit=crop" className="w-full h-full object-cover opacity-20 mix-blend-overlay" alt="Caminhão" />
-             <div className="absolute inset-0 bg-gradient-to-t from-[#004a99] to-transparent opacity-80"></div>
+        <section className="relative isolate overflow-hidden bg-gradient-to-br from-[#003b7b] via-[#004a99] to-[#075db5] pt-16 sm:pt-20 pb-32 sm:pb-36">
+          {/* Elementos gráficos discretos: sem fotografia ou banner na página inicial */}
+          <div aria-hidden="true" className="pointer-events-none absolute inset-0 overflow-hidden">
+            <div className="absolute -top-32 -right-20 h-80 w-80 rounded-full border border-white/10"></div>
+            <div className="absolute -top-20 -right-8 h-56 w-56 rounded-full border border-white/10"></div>
+            <div className="absolute -bottom-44 -left-24 h-96 w-96 rounded-full border border-white/10"></div>
+            <div className="absolute inset-0 opacity-[0.08]" style={{ backgroundImage: 'radial-gradient(#ffffff 1px, transparent 1px)', backgroundSize: '24px 24px' }}></div>
+            <div className="absolute bottom-0 left-0 right-0 h-1 bg-[#ffcc00]"></div>
           </div>
-          
           <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
-            <h2 className="text-4xl md:text-5xl lg:text-6xl font-black text-white uppercase tracking-tight mb-6 drop-shadow-md">
-              Sua Carga no <span className="text-[#ffcc00]">Caminho Certo</span>
+            <span className="inline-flex items-center gap-2 rounded-full border border-white/20 bg-white/10 px-4 py-2 text-[10px] sm:text-xs font-extrabold uppercase tracking-[0.18em] text-blue-50 mb-6">
+              <span className="h-2 w-2 rounded-full bg-[#ffcc00]"></span>
+              Acompanhamento de encomendas
+            </span>
+            <h2 className="text-3xl sm:text-4xl md:text-5xl lg:text-[56px] font-black text-white uppercase tracking-tight leading-[1.08] mb-5">
+              Sua carga no <span className="text-[#ffcc00]">caminho certo</span>
             </h2>
-            <p className="text-blue-100 text-lg md:text-xl font-medium max-w-2xl mx-auto mb-12 drop-shadow">
-              Acompanhe sua entrega em tempo real, com segurança e rapidez para qualquer lugar do Brasil.
+            <p className="text-blue-100 text-base sm:text-lg md:text-xl font-medium max-w-2xl mx-auto leading-relaxed">
+              Consulte o andamento da sua encomenda de forma simples, rápida e segura.
             </p>
           </div>
         </section>
 
         {/* Search & Results Container */}
-        <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 -mt-24 relative z-20 pb-24">
+        <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 -mt-20 sm:-mt-24 relative z-20 pb-24">
           
           {/* Search Box */}
-          <div className="bg-white rounded-2xl shadow-xl border border-slate-100 p-6 sm:p-8 mb-8">
+          <div className="bg-white rounded-2xl sm:rounded-3xl shadow-[0_18px_55px_rgba(15,45,85,0.13)] border border-slate-100 p-5 sm:p-8 mb-8">
+            <div className="mb-5">
+              <h3 className="text-lg sm:text-xl font-black text-slate-900">Onde está sua encomenda?</h3>
+              <p className="text-sm text-slate-500 mt-1">Informe o código de rastreamento para consultar as movimentações.</p>
+            </div>
             <form onSubmit={handleSearch} className="flex flex-col sm:flex-row gap-3">
               <div className="relative flex-1">
                 <Package className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 w-6 h-6" />
@@ -144,13 +154,13 @@ export function Tracking() {
                   value={code}
                   onChange={(e) => setCode(e.target.value.toUpperCase())}
                   placeholder="DIGITE SEU CÓDIGO EX: RDN..."
-                  className="w-full pl-14 pr-4 py-4 md:py-5 bg-slate-50 border border-slate-200 rounded-xl focus:bg-white focus:outline-none focus:border-[#004a99] focus:ring-2 focus:ring-blue-100 transition-all text-lg font-black text-slate-900 placeholder:text-slate-400 uppercase tracking-widest"
+                  className="w-full pl-14 pr-4 py-4 md:py-[18px] bg-slate-50 border border-slate-200 rounded-xl focus:bg-white focus:outline-none focus:border-[#004a99] focus:ring-4 focus:ring-blue-100 transition-all text-base sm:text-lg font-bold text-slate-900 placeholder:text-slate-400 uppercase tracking-wider"
                 />
               </div>
               <button
                 type="submit"
                 disabled={loading || !code.trim()}
-                className="bg-[#004a99] hover:bg-[#003a7a] disabled:opacity-70 text-white px-8 py-4 md:py-5 rounded-xl font-black text-sm uppercase tracking-widest transition-colors flex items-center justify-center gap-3 shrink-0 shadow-lg shadow-blue-900/20"
+                className="bg-[#004a99] hover:bg-[#003a7a] disabled:opacity-70 text-white px-8 py-4 md:py-[18px] rounded-xl font-black text-sm uppercase tracking-widest transition-all hover:-translate-y-0.5 hover:shadow-xl flex items-center justify-center gap-3 shrink-0 shadow-lg shadow-blue-900/20"
               >
                 {loading ? (
                   <div className="w-6 h-6 border-2 border-white border-t-transparent rounded-full animate-spin" />
@@ -303,26 +313,26 @@ export function Tracking() {
 
         {/* Info / FAQ Section & Services */}
         {!pkg && !loading && (
-          <div className="space-y-16 mt-8">
+          <div className="space-y-14 sm:space-y-16 mt-10">
             <div className="text-center">
-              <h2 className="text-3xl font-black text-[#004a99] uppercase tracking-tight mb-4">Por que a Rodonaves?</h2>
+              <h2 className="text-2xl sm:text-3xl font-black text-[#004a99] uppercase tracking-tight mb-4">Por que a Rodonaves?</h2>
               <p className="text-slate-600 font-medium max-w-2xl mx-auto">Com mais de 40 anos de história, somos referência no setor de transportes e logística no Brasil.</p>
             </div>
             
             <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-center mt-8">
-              <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm">
+              <div className="bg-white p-6 rounded-2xl border border-slate-200/80 shadow-sm hover:shadow-md hover:-translate-y-1 transition-all">
                 <p className="text-3xl font-black text-[#ffcc00] mb-2">+300</p>
                 <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Unidades</p>
               </div>
-              <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm">
+              <div className="bg-white p-6 rounded-2xl border border-slate-200/80 shadow-sm hover:shadow-md hover:-translate-y-1 transition-all">
                 <p className="text-3xl font-black text-[#ffcc00] mb-2">+3.5M</p>
                 <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Volumes/Mês</p>
               </div>
-              <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm">
+              <div className="bg-white p-6 rounded-2xl border border-slate-200/80 shadow-sm hover:shadow-md hover:-translate-y-1 transition-all">
                 <p className="text-3xl font-black text-[#ffcc00] mb-2">+4.800</p>
                 <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Municípios</p>
               </div>
-              <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm">
+              <div className="bg-white p-6 rounded-2xl border border-slate-200/80 shadow-sm hover:shadow-md hover:-translate-y-1 transition-all">
                 <p className="text-3xl font-black text-[#ffcc00] mb-2">+10.000</p>
                 <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Colaboradores</p>
               </div>
@@ -330,7 +340,7 @@ export function Tracking() {
 
             {/* Services Grid */}
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6 pt-16 border-t border-slate-200">
-              <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm hover:shadow-md transition-shadow group cursor-pointer">
+              <div className="bg-white p-6 rounded-2xl border border-slate-200/80 shadow-sm hover:shadow-lg hover:-translate-y-1 transition-all group cursor-pointer">
                 <div className="w-12 h-12 bg-blue-50 rounded-xl flex items-center justify-center mb-4 group-hover:bg-[#004a99] transition-colors">
                   <Truck className="w-6 h-6 text-[#004a99] group-hover:text-white transition-colors" />
                 </div>
@@ -338,7 +348,7 @@ export function Tracking() {
                 <p className="text-sm text-slate-600 font-medium">Coletas e entregas ágeis para pequenos e médios volumes em todo o território nacional.</p>
               </div>
               
-              <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm hover:shadow-md transition-shadow group cursor-pointer">
+              <div className="bg-white p-6 rounded-2xl border border-slate-200/80 shadow-sm hover:shadow-lg hover:-translate-y-1 transition-all group cursor-pointer">
                 <div className="w-12 h-12 bg-blue-50 rounded-xl flex items-center justify-center mb-4 group-hover:bg-[#004a99] transition-colors">
                   <Package className="w-6 h-6 text-[#004a99] group-hover:text-white transition-colors" />
                 </div>
@@ -346,7 +356,7 @@ export function Tracking() {
                 <p className="text-sm text-slate-600 font-medium">Veículo exclusivo para o seu transporte, otimizando prazos para grandes remessas.</p>
               </div>
               
-              <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm hover:shadow-md transition-shadow group cursor-pointer">
+              <div className="bg-white p-6 rounded-2xl border border-slate-200/80 shadow-sm hover:shadow-lg hover:-translate-y-1 transition-all group cursor-pointer">
                 <div className="w-12 h-12 bg-blue-50 rounded-xl flex items-center justify-center mb-4 group-hover:bg-[#004a99] transition-colors">
                   <MapPin className="w-6 h-6 text-[#004a99] group-hover:text-white transition-colors" />
                 </div>
